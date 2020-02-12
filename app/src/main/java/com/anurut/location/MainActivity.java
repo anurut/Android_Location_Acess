@@ -5,6 +5,7 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.app.ActivityCompat;
+import androidx.lifecycle.Observer;
 
 import android.Manifest;
 import android.app.Activity;
@@ -28,7 +29,6 @@ import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationResult;
-import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.location.LocationSettingsRequest;
 import com.google.android.gms.location.LocationSettingsResponse;
 import com.google.android.gms.location.LocationSettingsStatusCodes;
@@ -50,13 +50,13 @@ public class MainActivity extends AppCompatActivity {
     //    Code used in requesting runtime permissions.
     private static final int REQUEST_PERMISSIONS_REQUEST_CODE = 34;
 
-    //    Constant used in the location settinds dialog.
-    private static final int REQUSET_CHECK_SETTINGS = 0x1;
+    //    Constant used in the location settings dialog.
+    private static final int REQUEST_CHECK_SETTINGS = 0x1;
 
     //    Desired interval for location updates. Inexact. Updates may be more or less frequent.
     private static final long UPDATE_INTERVAL_IN_MILLISECONDS = 10000;
 
-    //    The fastest rate for active loation updates. Exact. Updates will never be more frequent than this value.
+    //    The fastest rate for active location updates. Exact. Updates will never be more frequent than this value.
     private static final long FASTEST_UPDATE_INTERVAL_IN_MILLISECONDS =
             UPDATE_INTERVAL_IN_MILLISECONDS / 2;
 
@@ -76,13 +76,16 @@ public class MainActivity extends AppCompatActivity {
 
     //    Stores the types of location services the client is interested in using. Used for checking
     //    settings to determine if the device has optimal location settings.
-    private LocationSettingsRequest mLocationSetiingsRequest;
+    private LocationSettingsRequest mLocationSettingsRequest;
 
     //    Callback for location events.
     private LocationCallback mLocationCallback;
 
     //    Current location fetched form the device.
     private Location mCurrentLocation;
+
+    // Locationlistener to fetch location using LiveData
+    private CurrentLocationListener locationListener;
 
     // UI widgets
     private Button mStartUpdatesButton;
@@ -121,20 +124,43 @@ public class MainActivity extends AppCompatActivity {
         // Set labels
         setLabels();
 
-        mRequestingLocationUpdates = false;
-        mLastUdateTime = "";
-
         // Update values using data stored in the bundle
         updateValuesFromBundle(savedInstanceState);
 
-        mFusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
-        mSettingsClient = LocationServices.getSettingsClient(this);
-
-        // Kick off the process of building the LocationCallback, LocationRequest, and
-        // LocationSettingsRequest objects.
-        createLocationCallback();
         createLocationRequest();
-        buildLocationSettingsRequest();
+
+        // Initialize CurrentLocationListener
+        locationListener = CurrentLocationListener.getInstance(getApplicationContext(), mLocationRequest);
+
+        // Update Latitude and Longitude TextView
+        locationListener.getCurrentLocation().observe(this, new Observer<Location>() {
+            @Override
+            public void onChanged(Location location) {
+                mLatitudeTextView.setText(String.format(Locale.ENGLISH, "%s: %f",
+                        mLatitudeLabel, location.getLatitude()));
+                mLongitudeTextView.setText(String.format(Locale.ENGLISH, "%s: %f",
+                        mLongitudeLabel, location.getLongitude()));
+            }
+        });
+
+        // Update last updated time TextView
+        locationListener.getLastUpdateTime().observe(this, new Observer<String>() {
+            @Override
+            public void onChanged(String s) {
+                mLastUpdateTimeTextView.setText(String.format(Locale.ENGLISH, "%s: %s",
+                        mLastUdateTimeLabel, s));
+            }
+        });
+
+
+        locationListener.getIsRequestingLocationUpdates().observe(this, new Observer<Boolean>() {
+            @Override
+            public void onChanged(Boolean aBoolean) {
+                mRequestingLocationUpdates = aBoolean;
+                setButtonsEnabledState();
+            }
+        });
+
     }
 
     /**
@@ -164,36 +190,10 @@ public class MainActivity extends AppCompatActivity {
         mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
     }
 
-    /**
-     * Creates a callback for receiving location events
-     */
-    private void createLocationCallback() {
-        mLocationCallback = new LocationCallback() {
-            @Override
-            public void onLocationResult(LocationResult locationResult) {
-                super.onLocationResult(locationResult);
-                mCurrentLocation = locationResult.getLastLocation();
-                mLastUdateTime = DateFormat.getTimeInstance().format(new Date());
-                updateLocationUI();
-            }
-        };
-    }
-
-    /**
-     * Uses a {@link com.google.android.gms.location.LocationSettingsRequest.Builder} to build
-     * a {@link com.google.android.gms.location.LocationSettingsRequest} that is used for checking
-     * if a device has the needed location settings.
-     */
-    private void buildLocationSettingsRequest() {
-        LocationSettingsRequest.Builder builder = new LocationSettingsRequest.Builder();
-        builder.addLocationRequest(mLocationRequest);
-        mLocationSetiingsRequest = builder.build();
-    }
-
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         //super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == REQUSET_CHECK_SETTINGS) {
+        if (requestCode == REQUEST_CHECK_SETTINGS) {
             switch (resultCode) {
                 case Activity.RESULT_OK:
                     Log.i(TAG, "User agreed to make required location settings changes.");
@@ -202,7 +202,7 @@ public class MainActivity extends AppCompatActivity {
                 case Activity.RESULT_CANCELED:
                     Log.i(TAG, "User chose not to make required location settings changes.");
                     mRequestingLocationUpdates = false;
-                    updateUI();
+                    //updateUI();
                     break;
             }
             super.onActivityResult(requestCode, resultCode, data);
@@ -229,27 +229,21 @@ public class MainActivity extends AppCompatActivity {
             if (savedInstanceState.keySet().contains(KEY_LOCATION)) {
                 // Since KEY_LOCATION was found in the Bundle, we can be sure that mCurrentLocation
                 // is not null.
-                // TODO: Put this variable in viewModel
+
                 mCurrentLocation = savedInstanceState.getParcelable(KEY_LOCATION);
             }
 
             // Update the value of mLastUpdateTime from the Bundle and update the UI.
             if (savedInstanceState.keySet().contains(KEY_LAST_UPDATE_TIME_STRING)) {
-                // TODO: Put this variable in viewModel
                 mLastUdateTime = savedInstanceState.getString(KEY_LAST_UPDATE_TIME_STRING);
             }
-            updateUI();
+            //updateUI();
         }
-    }
-
-    private void updateUI() {
-        setButtonsEnabledState();
-        updateLocationUI();
     }
 
 
     private void setButtonsEnabledState() {
-        // TODO: Set an observer here
+
         if (mRequestingLocationUpdates) {
             mStartUpdatesButton.setEnabled(false);
             mStopUpdatesButton.setEnabled(true);
@@ -294,9 +288,9 @@ public class MainActivity extends AppCompatActivity {
      */
     public void startUpdatesButtonHandler(View view) {
         if (!mRequestingLocationUpdates) {
-            mRequestingLocationUpdates = true;
+            locationListener.setIsRequestingLocationUpdates(true);
             setButtonsEnabledState();
-            startLocationUpdates();
+            locationListener.startLocationUpdates(MainActivity.this);
         }
     }
 
@@ -304,7 +298,7 @@ public class MainActivity extends AppCompatActivity {
      * Handles the Stop Updates button, and requests removal of location updates.
      */
     public void stopUpdatesButtonHandler(View view) {
-        stopLocationUpdates();
+        locationListener.stopLocationUpdates(MainActivity.this);
     }
 
     /**
@@ -334,18 +328,16 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         if (mRequestingLocationUpdates && checkPermissions())
-            startLocationUpdates();
+            locationListener.startLocationUpdates(MainActivity.this);
         else if (!checkPermissions())
             requestLocationPermissions();
-
-        updateUI();
     }
 
     @Override
     protected void onPause() {
         super.onPause();
         // Remove location updates to save battery.
-        stopLocationUpdates();
+        locationListener.stopLocationUpdates(MainActivity.this);
     }
 
     @Override
@@ -401,57 +393,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /**
-     * Requests location updates from the FusedLocationApi. Note: we don't call this unless location
-     * runtime permission has been granted.
-     */
-    private void startLocationUpdates() {
-        // Begin by checking if the device has the necessary location settings.
-        mSettingsClient.checkLocationSettings(mLocationSetiingsRequest)
-                .addOnSuccessListener(this, new OnSuccessListener<LocationSettingsResponse>() {
-                    @Override
-                    public void onSuccess(LocationSettingsResponse locationSettingsResponse) {
-                        Log.i(TAG, "All location settings are satisfied.");
-                        // Request location updates without checking request permissions
-                        mFusedLocationProviderClient.requestLocationUpdates(
-                                mLocationRequest,
-                                mLocationCallback,
-                                Looper.getMainLooper());
-                        updateUI();
-                    }
-                })
-                .addOnFailureListener(this, new OnFailureListener() {
-                    @Override
-                    public void onFailure(@NonNull Exception e) {
-                        int statusCode = ((ApiException) e).getStatusCode();
-
-                        switch (statusCode) {
-                            case LocationSettingsStatusCodes.RESOLUTION_REQUIRED:
-                                Log.i(TAG, "Location settings are not satisfied. Attempting to upgrade " +
-                                        "location settings ");
-
-                                try {
-                                    ResolvableApiException resolvableApiException = (ResolvableApiException) e;
-                                    resolvableApiException.startResolutionForResult(MainActivity.this, REQUSET_CHECK_SETTINGS);
-                                } catch (IntentSender.SendIntentException ex) {
-                                    Log.i(TAG, "PendingIntent unable to execute request.");
-                                    ex.printStackTrace();
-                                }
-                                break;
-                            case LocationSettingsStatusCodes.SETTINGS_CHANGE_UNAVAILABLE:
-                                String errorMessage = "Location settings are inadequate, and cannot be " +
-                                        "fixed here. Fix in Settings.";
-                                Log.e(TAG, errorMessage);
-                                Toast.makeText(MainActivity.this, errorMessage,
-                                        Toast.LENGTH_LONG)
-                                        .show();
-                                mRequestingLocationUpdates = false;
-                        }
-                        updateUI();
-                    }
-                });
-    }
-
-    /**
      * Callback received when a permissions request has been completed.
      */
     @Override
@@ -467,7 +408,7 @@ public class MainActivity extends AppCompatActivity {
             } else if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 if (mRequestingLocationUpdates) {
                     Log.i(TAG, "Permission granted, updates requested, starting updates");
-                    startLocationUpdates();
+                    locationListener.startLocationUpdates(MainActivity.this);
                 }
             } else {
                 // Permission denied.
