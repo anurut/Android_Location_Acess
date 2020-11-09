@@ -105,10 +105,19 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         // ViewBinding initialization
         initializeViewBinding();
+    
+        // Set link to root view and update view's elements
         View view = binding.getRoot();
         setContentView(view);
         
         setSupportActionBar(binding.toolbar);
+        
+        binding.startUpdatesButton.setOnClickListener(buttonView->
+            onStartUpdatesButtonClicked()
+        );
+        binding.stopUpdatesButton.setOnClickListener(buttonView->
+            onStopUpdatesButtonClicked()
+        );
 
         // Set labels
         setLabels();
@@ -328,7 +337,7 @@ public class MainActivity extends AppCompatActivity {
      * Handles the Start Updates button and requests start of location updates. Does nothing if
      * updates have already been requested.
      */
-    public void startUpdatesButtonHandler(View view) {
+    public void onStartUpdatesButtonClicked() {
         if (!mRequestingLocationUpdates) {
             mRequestingLocationUpdates = true;
             setButtonsEnabledState();
@@ -338,7 +347,7 @@ public class MainActivity extends AppCompatActivity {
     /**
      * Handles the Stop Updates button, and requests removal of location updates.
      */
-    public void stopUpdatesButtonHandler(View view) {
+    public void onStopUpdatesButtonClicked() {
         stopLocationUpdates();
     }
     
