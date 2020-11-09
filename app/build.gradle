@@ -29,9 +29,9 @@ android {
         targetCompatibility JavaVersion.VERSION_1_8
     }
     // Kotlin
-    /*kotlinOptions {
+    kotlinOptions {
         jvmTarget = "1.8"
-    }*/
+    }
 }
 
 ext {

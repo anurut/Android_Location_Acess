@@ -45,7 +45,6 @@
                 android:layout_marginRight="10dp"
                 android:layout_weight="1"
                 android:gravity="center"
-                android:onClick="startUpdatesButtonHandler"
                 android:text="@string/start_updates"/>
 
             <Button
@@ -56,7 +55,6 @@
                 android:layout_marginRight="10dp"
                 android:layout_weight="1"
                 android:gravity="center"
-                android:onClick="stopUpdatesButtonHandler"
                 android:text="@string/stop_updates"/>
 
 
