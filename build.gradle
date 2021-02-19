@@ -3,7 +3,7 @@
 buildscript {
     ext {
         // Android Gradle plugin
-        gradleVersion = "4.1.0"
+        gradleVersion = '4.1.1'
     }
 
     ext.kotlin_version = '1.4.10'

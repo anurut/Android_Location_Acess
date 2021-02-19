@@ -112,12 +112,12 @@ public class MainActivity extends AppCompatActivity {
         
         setSupportActionBar(binding.toolbar);
         
-        binding.startUpdatesButton.setOnClickListener(buttonView->
+        /*binding.startUpdatesButton.setOnClickListener(buttonView->
             onStartUpdatesButtonClicked()
         );
         binding.stopUpdatesButton.setOnClickListener(buttonView->
             onStopUpdatesButtonClicked()
-        );
+        );*/
 
         // Set labels
         setLabels();
@@ -367,13 +367,13 @@ public class MainActivity extends AppCompatActivity {
     }
     private void setButtonsEnabledState() {
         // TODO: Set an observer here
-        if (mRequestingLocationUpdates) {
+        /*if (mRequestingLocationUpdates) {
             binding.startUpdatesButton.setEnabled(false);
             binding.stopUpdatesButton.setEnabled(true);
         } else {
             binding.startUpdatesButton.setEnabled(true);
             binding.stopUpdatesButton.setEnabled(false);
-        }
+        }*/
     }
     private void updateLocationUI() {
         // TODO: Set observer here
@@ -382,8 +382,6 @@ public class MainActivity extends AppCompatActivity {
                 mCurrentLocation.getLatitude()));
             binding.longitudeText.setText(String.format(Locale.ENGLISH, "%s: %f", mLongitudeLabel,
                 mCurrentLocation.getLongitude()));
-            binding.lastUpdateTimeText.setText(String.format(Locale.ENGLISH, "%s: %s",
-                mLastUpdateTimeLabel, mLastUpdateTime));
         }
     }
     /**
